@@ -28,7 +28,14 @@ class SchedulerJob(object):
 
 
 class Scheduler(object):
+    """ABC Scheduler class"""
+
     def __init__(self, jobs: list = None, logging_level=None):
+        """
+        :param jobs: list of SchedulerJobs
+        :param logging_level: logging level
+        """
+
         self._thread = None
         self._event: threading.Event = threading.Event()
         self.state: StateStatus = StateStatus.STOPPED
@@ -41,6 +48,11 @@ class Scheduler(object):
         self.logging.setLevel(logging_level if logging_level else logging.INFO)
 
     def add_job(self, job: SchedulerJob):
+        """
+        Add new job to storage
+        :param job:
+        """
+
         if isinstance(job, SchedulerJob):
             self.jobs_storage.append(job)
 
@@ -49,11 +61,16 @@ class Scheduler(object):
         raise NotImplementedError
 
     def _loop(self, *args, **kwargs):
+        """
+        Loop. Wait for interval and run job.
+        :param args:
+        :param kwargs:
+        """
+
         job = args[0]
         logging.debug('start job - %s' % str(job))
-        while self.state == StateStatus.RUNNING:
+        while self.state != StateStatus.STOPPED:
             self._event.wait(job.interval)
-            self._event.clear()
             if self.state == StateStatus.RUNNING:
                 try:
                     job.func()
@@ -65,24 +82,52 @@ class Scheduler(object):
                 break
 
     def shutdown(self):
+        """
+        Shutdown Scheduler
+        """
+
         self.state = StateStatus.STOPPED
         logging.info('Scheduler is stopped')
 
+    def pause(self):
+        """
+        Pause Scheduler
+        """
+
+        self.state = StateStatus.PAUSED
+        logging.info('Scheduler is paused')
+
+    def resume(self):
+        """
+        Resume Scheduler
+        """
+
+        self.state = StateStatus.RUNNING
+        logging.info('Scheduler is resumed')
+
+    def running(self) -> bool:
+        """
+        If Scheduler running
+        :return: bool Return True if Scheduler has been started
+        """
+        return self.state != StateStatus.STOPPED
+
 
 class DelayedScheduler(Scheduler):
-    """Scheduler, count of time not depends on previous task."""
+    """Delayed Scheduler - accepts list of SchedulerJobs and start job's function"""
 
     def __init__(self, jobs: list = None, logging_level=None):
         super().__init__(jobs, logging_level)
 
     def __call__(self, *args, **kwargs):
         """
-        Start Scheduler. Example DelayedScheduler(jobs=[
+        Start Delayed Scheduler. Example DelayedScheduler(jobs=[
             SchedulerJob(func=lambda: print("job2"), interval=2)
         ])()
         :param args:
         :param kwargs:
-        :return:
+        :raises SchedulerAlreadyRunning : if Scheduler is already running
+        :return: self
         """
 
         if self.state != StateStatus.STOPPED:

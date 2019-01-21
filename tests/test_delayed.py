@@ -1,16 +1,26 @@
 import unittest
 import logging
 from py_scheduler import DelayedScheduler, StateStatus, SchedulerJob
+from py_scheduler.exceptions import SchedulerAlreadyRunning
 from time import sleep
 
 
-class LogHandler:
+class LogHandler(object):
     level = logging.DEBUG
     errors = []
 
     @classmethod
     def handle(cls, record):
         cls.errors.append(record)
+
+
+class ResultStorage(object):
+
+    def __init__(self):
+        self.results = []
+
+    def add(self, msg):
+        self.results.append(msg)
 
 
 class DelayedSchedulerTest(unittest.TestCase):
@@ -37,41 +47,77 @@ class DelayedSchedulerTest(unittest.TestCase):
         Test when Scheduler have 2 jobs
         :return:
         """
-
-        class ResultStorage:
-            results = []
-
-            @classmethod
-            def add(cls, msg):
-                cls.results.append(msg)
+        res_storage = ResultStorage()
 
         def job2():
-            ResultStorage.add("job 2 success")
+            res_storage.add("job 2 success")
 
         sc_object = DelayedScheduler(jobs=[
-            SchedulerJob(func=lambda: ResultStorage.add("job 1 success"), interval=1),
+            SchedulerJob(func=lambda: res_storage.add("job 1 success"), interval=1),
             SchedulerJob(func=job2, interval=2)
         ], logging_level=logging.INFO)
         sc_object.logging.addHandler(LogHandler)
 
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
+        self.assertFalse(sc_object.running())
         sc_object()
         self.assertEqual(StateStatus.RUNNING, sc_object.state)
+        self.assertTrue(sc_object.running())
 
         sleep(3.1)
         sc_object.shutdown()
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
 
-        self.assertEqual(4, len(ResultStorage.results))
+        self.assertEqual(4, len(res_storage.results))
         msg_1 = "job 1 success"
         msg_2 = "job 2 success"
-        self.assertEqual(msg_1, ResultStorage.results[0])
-        self.assertTrue(True if ResultStorage.results[1] in (msg_1, msg_2) else False)
-        self.assertTrue(True if ResultStorage.results[2] in (msg_1, msg_2) else False)
-        self.assertEqual(msg_1, ResultStorage.results[3])
+        self.assertEqual(msg_1, res_storage.results[0])
+        self.assertTrue(True if res_storage.results[1] in (msg_1, msg_2) else False)
+        self.assertTrue(True if res_storage.results[2] in (msg_1, msg_2) else False)
+        self.assertEqual(msg_1, res_storage.results[3])
 
         self.assertEqual(1, len(LogHandler.errors))
         self.assertEqual("Scheduler is stopped", LogHandler.errors[0].msg)
+        self.assertFalse(sc_object.running())
+
+    def test_pause(self):
+        """
+        Start Scheduler, wait for 1 result, the pause. Check paused state. We cant start again
+        :return:
+        """
+        res_storage = ResultStorage()
+
+        sc_object = DelayedScheduler(jobs=[
+            SchedulerJob(func=lambda: res_storage.add("job 1 success"), interval=1),
+        ], logging_level=logging.INFO)
+        sc_object.logging.addHandler(LogHandler)
+
+        sc_object()
+        self.assertEqual(StateStatus.RUNNING, sc_object.state)
+        self.assertTrue(sc_object.running())
+
+        sleep(1)
+
+        sc_object.pause()
+
+        self.assertEqual(StateStatus.PAUSED, sc_object.state)
+        self.assertTrue(sc_object.running())
+
+        sleep(1)
+
+        self.assertEqual(1, len(res_storage.results))
+
+        self.assertEqual(1, len(LogHandler.errors))
+        self.assertEqual("Scheduler is paused", LogHandler.errors[0].msg)
+
+        self.assertRaises(SchedulerAlreadyRunning, lambda: sc_object())
+
+        sc_object.resume()
+
+        sleep(1)
+        self.assertEqual(2, len(res_storage.results))
+
+        sc_object.shutdown()
 
     def test_with_error(self):
         """
