@@ -2,6 +2,7 @@ from abc import abstractmethod
 import threading
 from .utils import Gracefully
 from .exceptions import SchedulerAlreadyRunning
+import logging
 
 
 class StateStatus:
@@ -25,7 +26,7 @@ class SchedulerJob:
 
 
 class Scheduler:
-    def __init__(self, jobs: list = None):
+    def __init__(self, jobs: list = None, logging_level=logging.INFO):
         self._thread = None
         self._event = threading.Event()
         self.state = StateStatus.STOPPED
@@ -33,6 +34,8 @@ class Scheduler:
 
         jobs = jobs if jobs else []
         [self.add_job(job) for job in jobs]
+
+        self.logging = logging.basicConfig(level=logging_level)
 
     def add_job(self, job: SchedulerJob):
         if isinstance(job, SchedulerJob):
@@ -44,6 +47,7 @@ class Scheduler:
 
     def _loop(self, *args, **kwargs):
         job = args[0]
+        logging.debug("start job - %s " % vars(job))
         while self.state == StateStatus.RUNNING:
             self._event.wait(job.interval)
             self._event.clear()
@@ -51,7 +55,7 @@ class Scheduler:
                 try:
                     job.func()
                 except Exception as err:
-                    print("error in job `%s` - %s" % (job.name, err), flush=True)
+                    logging.critical("error in job `%s` - %s" % (job.name, err))
                     job.error_capture(err)
 
             if kwargs.get("condition") and kwargs['condition'].abort_loop:
@@ -59,7 +63,7 @@ class Scheduler:
 
     def shutdown(self):
         self.state = StateStatus.STOPPED
-        print("Scheduler is stopped", flush=True)
+        logging.info("Scheduler is stopped")
 
 
 class DelayedScheduler(Scheduler):
@@ -67,8 +71,8 @@ class DelayedScheduler(Scheduler):
     Scheduler, count of time not depends on previous task.
     """
 
-    def __init__(self, jobs: list = None):
-        super().__init__(jobs)
+    def __init__(self, jobs: list = None, logging_level=None):
+        super().__init__(jobs, logging_level)
 
     def __call__(self, *args, **kwargs):
         if self.state != StateStatus.STOPPED:

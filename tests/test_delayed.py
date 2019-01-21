@@ -1,4 +1,5 @@
 import unittest
+import logging
 from py_scheduler import DelayedScheduler, StateStatus, SchedulerJob
 from time import sleep
 
@@ -12,10 +13,13 @@ class DelayedSchedulerTest(unittest.TestCase):
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
 
     def test_call(self):
+        def job2():
+            print("job2")
+
         sc_object = DelayedScheduler(jobs=[
             SchedulerJob(func=lambda: print("job1"), interval=1),
-            SchedulerJob(func=lambda: print("job2"), interval=2)
-        ])
+            SchedulerJob(func=job2, interval=2)
+        ], logging_level=logging.DEBUG)
 
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
         sc_object()
