@@ -23,6 +23,12 @@ class ResultStorage(object):
         self.results.append(msg)
 
 
+def set_logger(sc_object):
+    sc_object.logging = logging.getLogger()
+    sc_object.logging.setLevel(logging.INFO)
+    sc_object.logging.addHandler(LogHandler)
+
+
 class DelayedSchedulerTest(unittest.TestCase):
     def setUp(self):
         LogHandler.errors = []
@@ -33,7 +39,7 @@ class DelayedSchedulerTest(unittest.TestCase):
         :return:
         """
         sc_object = DelayedScheduler()
-        sc_object.logging.addHandler(LogHandler)
+        set_logger(sc_object)
 
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
         sc_object()
@@ -56,7 +62,7 @@ class DelayedSchedulerTest(unittest.TestCase):
             SchedulerJob(func=lambda: res_storage.add("job 1 success"), interval=1),
             SchedulerJob(func=job2, interval=2)
         ], logging_level=logging.INFO)
-        sc_object.logging.addHandler(LogHandler)
+        set_logger(sc_object)
 
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
         self.assertFalse(sc_object.running())
@@ -90,7 +96,7 @@ class DelayedSchedulerTest(unittest.TestCase):
         sc_object = DelayedScheduler(jobs=[
             SchedulerJob(func=lambda: res_storage.add("job 1 success"), interval=1),
         ], logging_level=logging.INFO)
-        sc_object.logging.addHandler(LogHandler)
+        set_logger(sc_object)
 
         sc_object()
         self.assertEqual(StateStatus.RUNNING, sc_object.state)
@@ -127,20 +133,28 @@ class DelayedSchedulerTest(unittest.TestCase):
         sc_object = DelayedScheduler(jobs=[
             SchedulerJob(func=lambda: 1 + None, interval=1, name="job with error"),
         ])
-        sc_object.logging.addHandler(LogHandler)
+        set_logger(sc_object)
 
-        self.assertEqual(StateStatus.STOPPED, sc_object.state)
         sc_object()
-        self.assertEqual(StateStatus.RUNNING, sc_object.state)
 
         sleep(1.5)
         sc_object.shutdown()
-        self.assertEqual(StateStatus.STOPPED, sc_object.state)
 
         self.assertEqual(2, len(LogHandler.errors))
         self.assertEqual("error in job `job with error` - unsupported operand type(s) for +: 'int' and 'NoneType'",
                          LogHandler.errors[0].msg)
         self.assertEqual("Scheduler is stopped", LogHandler.errors[1].msg)
+
+    def test_bad_job(self):
+        sc_object = DelayedScheduler(jobs=[
+            "bad job",
+        ])
+        set_logger(sc_object)
+
+        sc_object()
+
+        self.assertEqual(1, len(LogHandler.errors))
+        self.assertEqual("jobs storage is empty", LogHandler.errors[0].msg)
 
 
 if __name__ == '__main__':

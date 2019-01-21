@@ -4,6 +4,7 @@ from enum import Enum, auto
 from .utils import Gracefully
 from .exceptions import SchedulerAlreadyRunning
 import logging
+from typing import Callable
 
 
 class StateStatus(Enum):
@@ -13,7 +14,7 @@ class StateStatus(Enum):
 
 
 class SchedulerJob(object):
-    def __init__(self, func, interval: int = 0, name: str = '', error_capture=None):
+    def __init__(self, func: Callable, interval: int = 0, name: str = '', error_capture: Callable = None):
         """
         :param func: Job function
         :param interval: Time interval in seconds
@@ -21,10 +22,10 @@ class SchedulerJob(object):
         :param error_capture: Function to capture Exception, for example: `sentry`
         """
 
-        self.func = func
+        self.func: Callable = func
         self.interval: int = int(interval) if interval else 1
         self.name: str = str(name)
-        self.error_capture = error_capture if error_capture else lambda _: True
+        self.error_capture: Callable = error_capture if error_capture else lambda _: True
 
 
 class Scheduler(object):
@@ -39,12 +40,13 @@ class Scheduler(object):
         self._thread = None
         self._event: threading.Event = threading.Event()
         self.state: StateStatus = StateStatus.STOPPED
-        self.jobs_storage: list = []
+        self.jobs_storage: ['SchedulerJob'] = []
 
         jobs = jobs if jobs else []
-        [self.add_job(job) for job in jobs]
+        for job in jobs:
+            self.add_job(job)
 
-        self.logging = logging.getLogger()
+        self.logging = logging.getLogger(__name__)
         self.logging.setLevel(logging_level if logging_level else logging.INFO)
 
     def add_job(self, job: SchedulerJob):
@@ -52,9 +54,11 @@ class Scheduler(object):
         Add new job to storage
         :param job:
         """
-
-        if isinstance(job, SchedulerJob):
-            self.jobs_storage.append(job)
+        try:
+            if isinstance(job, object) and hasattr(job, 'func'):
+                self.jobs_storage.append(job)
+        except Exception as err:
+            self.logging.exception("Bad job was given - %s" % err)
 
     @abstractmethod
     def __call__(self, *args, **kwargs):
@@ -115,9 +119,6 @@ class Scheduler(object):
 
 class DelayedScheduler(Scheduler):
     """Delayed Scheduler - accepts list of SchedulerJobs and start job's function"""
-
-    def __init__(self, jobs: list = None, logging_level=None):
-        super().__init__(jobs, logging_level)
 
     def __call__(self, *args, **kwargs):
         """
