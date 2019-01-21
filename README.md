@@ -13,7 +13,7 @@ Example for PublicApi:
 ```python
 from py_scheduler import DelayedScheduler, SchedulerJob
 sc_object = DelayedScheduler(jobs=[
-    SchedulerJob(func=lambda: print("job1"), interval=1),
+    SchedulerJob(func=lambda: print("job1"), interval=1, name="job name"),
     SchedulerJob(func=lambda: print("job2"), interval=2)
 ])()
 ...

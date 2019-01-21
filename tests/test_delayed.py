@@ -25,8 +25,18 @@ class DelayedSchedulerTest(unittest.TestCase):
         sc_object.shutdown()
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
 
-    def test_singleton(self):
-        pass
+    def test_with_error(self):
+        sc_object = DelayedScheduler(jobs=[
+            SchedulerJob(func=lambda: 1 + None, interval=1, name="job with error"),
+        ])
+
+        self.assertEqual(StateStatus.STOPPED, sc_object.state)
+        sc_object()
+        self.assertEqual(StateStatus.RUNNING, sc_object.state)
+
+        sleep(2)
+        sc_object.shutdown()
+        self.assertEqual(StateStatus.STOPPED, sc_object.state)
 
 
 if __name__ == '__main__':

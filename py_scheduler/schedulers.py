@@ -11,9 +11,17 @@ class StateStatus:
 
 
 class SchedulerJob:
-    def __init__(self, func, interval: int = 0):
+    def __init__(self, func, interval: int = 0, name: str = "", error_capture=None):
+        """
+        :param func: Job function
+        :param interval: Time interval in seconds
+        :param name: Name of Job
+        :param error_capture: Function to capture Exception, for example: `sentry`
+        """
         self.func = func
         self.interval: int = interval if interval else 1
+        self.name = name
+        self.error_capture = error_capture if error_capture else lambda _: True
 
 
 class Scheduler:
@@ -40,7 +48,11 @@ class Scheduler:
             self._event.wait(job.interval)
             self._event.clear()
             if self.state == StateStatus.RUNNING:
-                job.func()
+                try:
+                    job.func()
+                except Exception as err:
+                    print("error in job `%s` - %s" % (job.name, err), flush=True)
+                    job.error_capture(err)
 
             if kwargs.get("condition") and kwargs['condition'].abort_loop:
                 break
@@ -64,7 +76,8 @@ class DelayedScheduler(Scheduler):
 
         for job in self.jobs_storage:
             self.state = StateStatus.RUNNING
-            self._thread = threading.Thread(target=self._loop, name='Scheduler', args=(job,),
+            self._thread = threading.Thread(target=self._loop,
+                                            args=(job,),
                                             kwargs={"condition": Gracefully()},
                                             daemon=False)
             self._thread.start()
