@@ -20,9 +20,9 @@ setup(
     name='py_scheduler',
     version=version,
     packages=['py_scheduler'],
-    url='',
-    license='',
-    author='py_scheduler',
+    url='https://github.com/kl09/py_scheduler/',
+    license='MIT',
+    author='kl09',
     author_email='',
-    description=''
+    description='',
 )

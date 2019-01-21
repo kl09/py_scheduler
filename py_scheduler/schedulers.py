@@ -26,7 +26,7 @@ class SchedulerJob:
 
 
 class Scheduler:
-    def __init__(self, jobs: list = None, logging_level=logging.INFO):
+    def __init__(self, jobs: list = None, logging_level=None):
         self._thread = None
         self._event = threading.Event()
         self.state = StateStatus.STOPPED
@@ -35,7 +35,8 @@ class Scheduler:
         jobs = jobs if jobs else []
         [self.add_job(job) for job in jobs]
 
-        self.logging = logging.basicConfig(level=logging_level)
+        self.logging = logging.getLogger()
+        self.logging.setLevel(logging_level if logging_level else logging.INFO)
 
     def add_job(self, job: SchedulerJob):
         if isinstance(job, SchedulerJob):
@@ -77,6 +78,9 @@ class DelayedScheduler(Scheduler):
     def __call__(self, *args, **kwargs):
         if self.state != StateStatus.STOPPED:
             raise SchedulerAlreadyRunning
+
+        if not self.jobs_storage:
+            logging.info("jobs storage is empty")
 
         for job in self.jobs_storage:
             self.state = StateStatus.RUNNING
