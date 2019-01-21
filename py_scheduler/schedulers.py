@@ -6,6 +6,9 @@ from .exceptions import SchedulerAlreadyRunning
 import logging
 from typing import Callable
 
+logger = logging.getLogger('py_scheduler')
+logger.setLevel(logging.INFO)
+
 
 class StateStatus(Enum):
     STOPPED = auto()
@@ -14,7 +17,8 @@ class StateStatus(Enum):
 
 
 class SchedulerJob(object):
-    def __init__(self, func: Callable, func_args: tuple = (), interval: int = 0, name: str = '', error_capture: Callable = None):
+    def __init__(self, func: Callable, func_args: tuple = (), interval: int = 0, name: str = '',
+                 error_capture: Callable = None):
         """
         :param func: Job function
         :param interval: Time interval in seconds
@@ -23,7 +27,7 @@ class SchedulerJob(object):
         """
 
         self.func: Callable = func
-        self.func_args = func_args
+        self.func_args: tuple = func_args
         self.interval: int = int(interval) if interval else 1
         self.name: str = str(name)
         self.error_capture: Callable = error_capture if error_capture else lambda _: True
@@ -32,10 +36,9 @@ class SchedulerJob(object):
 class Scheduler(object):
     """ABC Scheduler class"""
 
-    def __init__(self, jobs: list = None, logging_level=None):
+    def __init__(self, jobs: list = None):
         """
         :param jobs: list of SchedulerJobs
-        :param logging_level: logging level
         """
 
         self._thread = None
@@ -47,9 +50,6 @@ class Scheduler(object):
         for job in jobs:
             self.add_job(job)
 
-        self.logging = logging.getLogger(__name__)
-        self.logging.setLevel(logging_level if logging_level else logging.INFO)
-
     def add_job(self, job: SchedulerJob):
         """
         Add new job to storage
@@ -59,7 +59,7 @@ class Scheduler(object):
             if isinstance(job, object) and hasattr(job, 'func'):
                 self.jobs_storage.append(job)
         except Exception as err:
-            self.logging.exception("Bad job was given - %s" % err)
+            logger.exception("Bad job was given - %s" % err)
 
     @abstractmethod
     def __call__(self, *args, **kwargs):
@@ -73,14 +73,14 @@ class Scheduler(object):
         """
 
         job = args[0]
-        logging.debug('start job - %s' % str(job))
+        logger.debug('start job - %s' % str(job))
         while self.state != StateStatus.STOPPED:
             self._event.wait(job.interval)
             if self.state == StateStatus.RUNNING:
                 try:
                     job.func(*job.func_args)
                 except Exception as err:
-                    logging.critical('error in job `%s` - %s' % (job.name, err))
+                    logger.critical('error in job `%s` - %s' % (job.name, err))
                     job.error_capture(err)
 
             if kwargs.get('condition') and kwargs['condition'].abort_loop:
@@ -92,7 +92,7 @@ class Scheduler(object):
         """
 
         self.state = StateStatus.STOPPED
-        logging.info('Scheduler is stopped')
+        logger.info('Scheduler is stopped')
 
     def pause(self):
         """
@@ -100,7 +100,7 @@ class Scheduler(object):
         """
 
         self.state = StateStatus.PAUSED
-        logging.info('Scheduler is paused')
+        logger.info('Scheduler is paused')
 
     def resume(self):
         """
@@ -108,7 +108,7 @@ class Scheduler(object):
         """
 
         self.state = StateStatus.RUNNING
-        logging.info('Scheduler is resumed')
+        logger.info('Scheduler is resumed')
 
     def running(self) -> bool:
         """
@@ -136,7 +136,7 @@ class DelayedScheduler(Scheduler):
             raise SchedulerAlreadyRunning
 
         if not self.jobs_storage:
-            logging.info('jobs storage is empty')
+            logger.info('jobs storage is empty')
 
         for job in self.jobs_storage:
             self.state = StateStatus.RUNNING

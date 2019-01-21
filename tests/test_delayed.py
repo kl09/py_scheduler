@@ -1,6 +1,6 @@
 import unittest
 import logging
-from py_scheduler import DelayedScheduler, StateStatus, SchedulerJob
+from py_scheduler import DelayedScheduler, StateStatus, SchedulerJob, logger
 from py_scheduler.exceptions import SchedulerAlreadyRunning
 from time import sleep
 
@@ -23,10 +23,8 @@ class ResultStorage(object):
         self.results.append(msg)
 
 
-def set_logger(sc_object):
-    sc_object.logging = logging.getLogger()
-    sc_object.logging.setLevel(logging.INFO)
-    sc_object.logging.addHandler(LogHandler)
+logger.setLevel(logging.INFO)
+logger.addHandler(LogHandler)
 
 
 class DelayedSchedulerTest(unittest.TestCase):
@@ -39,7 +37,6 @@ class DelayedSchedulerTest(unittest.TestCase):
         :return:
         """
         sc_object = DelayedScheduler()
-        set_logger(sc_object)
 
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
         sc_object()
@@ -61,8 +58,7 @@ class DelayedSchedulerTest(unittest.TestCase):
         sc_object = DelayedScheduler(jobs=[
             SchedulerJob(func=res_storage.add, func_args=("job 1 success",), interval=1),
             SchedulerJob(func=job2, interval=2)
-        ], logging_level=logging.INFO)
-        set_logger(sc_object)
+        ])
 
         self.assertEqual(StateStatus.STOPPED, sc_object.state)
         self.assertFalse(sc_object.running())
@@ -95,8 +91,7 @@ class DelayedSchedulerTest(unittest.TestCase):
 
         sc_object = DelayedScheduler(jobs=[
             SchedulerJob(func=res_storage.add, func_args=("job 1 success",), interval=1),
-        ], logging_level=logging.INFO)
-        set_logger(sc_object)
+        ])
 
         sc_object()
         self.assertEqual(StateStatus.RUNNING, sc_object.state)
@@ -133,7 +128,6 @@ class DelayedSchedulerTest(unittest.TestCase):
         sc_object = DelayedScheduler(jobs=[
             SchedulerJob(func=lambda: 1 + None, interval=1, name="job with error"),
         ])
-        set_logger(sc_object)
 
         sc_object()
 
@@ -153,7 +147,6 @@ class DelayedSchedulerTest(unittest.TestCase):
         sc_object = DelayedScheduler(jobs=[
             "bad job",
         ])
-        set_logger(sc_object)
 
         sc_object()
 
