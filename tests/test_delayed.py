@@ -59,7 +59,7 @@ class DelayedSchedulerTest(unittest.TestCase):
             res_storage.add("job 2 success")
 
         sc_object = DelayedScheduler(jobs=[
-            SchedulerJob(func=lambda: res_storage.add("job 1 success"), interval=1),
+            SchedulerJob(func=res_storage.add, func_args=("job 1 success",), interval=1),
             SchedulerJob(func=job2, interval=2)
         ], logging_level=logging.INFO)
         set_logger(sc_object)
@@ -94,7 +94,7 @@ class DelayedSchedulerTest(unittest.TestCase):
         res_storage = ResultStorage()
 
         sc_object = DelayedScheduler(jobs=[
-            SchedulerJob(func=lambda: res_storage.add("job 1 success"), interval=1),
+            SchedulerJob(func=res_storage.add, func_args=("job 1 success",), interval=1),
         ], logging_level=logging.INFO)
         set_logger(sc_object)
 
@@ -146,6 +146,10 @@ class DelayedSchedulerTest(unittest.TestCase):
         self.assertEqual("Scheduler is stopped", LogHandler.errors[1].msg)
 
     def test_bad_job(self):
+        """
+        Test when job is not SchedulerJob
+        :return:
+        """
         sc_object = DelayedScheduler(jobs=[
             "bad job",
         ])

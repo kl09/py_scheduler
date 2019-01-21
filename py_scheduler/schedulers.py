@@ -14,7 +14,7 @@ class StateStatus(Enum):
 
 
 class SchedulerJob(object):
-    def __init__(self, func: Callable, interval: int = 0, name: str = '', error_capture: Callable = None):
+    def __init__(self, func: Callable, func_args: tuple = (), interval: int = 0, name: str = '', error_capture: Callable = None):
         """
         :param func: Job function
         :param interval: Time interval in seconds
@@ -23,6 +23,7 @@ class SchedulerJob(object):
         """
 
         self.func: Callable = func
+        self.func_args = func_args
         self.interval: int = int(interval) if interval else 1
         self.name: str = str(name)
         self.error_capture: Callable = error_capture if error_capture else lambda _: True
@@ -77,7 +78,7 @@ class Scheduler(object):
             self._event.wait(job.interval)
             if self.state == StateStatus.RUNNING:
                 try:
-                    job.func()
+                    job.func(*job.func_args)
                 except Exception as err:
                     logging.critical('error in job `%s` - %s' % (job.name, err))
                     job.error_capture(err)
