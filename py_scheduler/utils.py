@@ -1,4 +1,3 @@
-# process SIGTERM signal from "docker stop"
 from signal import signal, SIGTERM
 
 
@@ -12,13 +11,18 @@ class Singleton(type):
 
 
 class Gracefully(metaclass=Singleton):
+    """Process SIGTERM signal from 'docker stop'"""
     def __init__(self):
+        """
+        Set a handler for a signal
+        """
         self.abort_loop = False
         signal(SIGTERM, self.exit_gracefully)
 
     def exit_gracefully(self):
-        try:
-            print("Log: shutdown()", flush=True)
-        except Exception:
-            pass
+        """
+        Exit from loop when we get signal
+        :return:
+        """
+        print('Log: shutdown()', flush=True)
         self.abort_loop = True

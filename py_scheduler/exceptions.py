@@ -1,10 +1,10 @@
 class BaseServiceException(Exception):
-    code = 0
-    message = "Unknown Error"
+    code = '0'
+    message = 'Unknown Error'
 
-    def __init__(self, message=None, code=None):
-        self.message = message
-        self.code = code
+    def __init__(self, message: str = '', code: str = ''):
+        self.message: str = message
+        self.code: str = code
 
     def __str__(self):
         return self.message
