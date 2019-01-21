@@ -3,7 +3,7 @@ Python Job Scheduler
 
 ## Install
 ```bash
-sudo pip3 install git+https://git@github.com/kl09/py_scheduler.git
+pip3 install git+https://git@github.com/kl09/py_scheduler.git
 ```
 
 >
