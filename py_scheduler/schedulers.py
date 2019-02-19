@@ -18,12 +18,13 @@ class StateStatus(Enum):
 
 class SchedulerJob(object):
     def __init__(self, func: Callable, func_args: tuple = (), interval: int = 0, name: str = '',
-                 error_capture: Callable = None):
+                 error_capture: Callable = None, start_immediately: bool = True):
         """
         :param func: Job function
         :param interval: Time interval in seconds
         :param name: Name of Job
         :param error_capture: Function to capture Exception, for example: `sentry`
+        :param start_immediately: if True - first start is immediately
         """
 
         self.func: Callable = func
@@ -31,6 +32,7 @@ class SchedulerJob(object):
         self.interval: int = int(interval) if interval else 1
         self.name: str = str(name)
         self.error_capture: Callable = error_capture if error_capture else lambda _: True
+        self.start_immediately: bool = start_immediately
 
 
 class Scheduler(object):
@@ -71,11 +73,13 @@ class Scheduler(object):
         :param args:
         :param kwargs:
         """
-
         job = args[0]
+
         logger.debug('start job - %s' % str(job))
         while self.state != StateStatus.STOPPED:
-            self._event.wait(job.interval)
+            if not job.start_immediately:
+                self._event.wait(job.interval)
+
             if self.state == StateStatus.RUNNING:
                 try:
                     job.func(*job.func_args)
@@ -85,6 +89,9 @@ class Scheduler(object):
 
             if kwargs.get('condition') and kwargs['condition'].abort_loop:
                 break
+
+            if job.start_immediately:
+                job.start_immediately = False
 
     def shutdown(self):
         """
