@@ -4,6 +4,7 @@ from enum import Enum, auto
 from .utils import Gracefully
 from .exceptions import SchedulerAlreadyRunning
 import logging
+import datetime
 from typing import Callable
 
 
@@ -12,7 +13,7 @@ class LogHandler(object):
 
     @classmethod
     def handle(cls, record):
-        print(record, flush=True)
+        print(datetime.datetime.now(), record, flush=True)
 
 
 logger = logging.getLogger('py_scheduler')
@@ -87,12 +88,13 @@ class Scheduler(object):
         """
         job = args[0]
 
-        logger.debug('start job - %s' % str(job))
+        logger.debug('start job loop - %s' % str(job))
         while self.state != StateStatus.STOPPED:
             if not job.start_immediately:
                 self._event.wait(job.interval)
 
             if self.state == StateStatus.RUNNING:
+                logger.debug('run job - %s' % str(job))
                 try:
                     job.func(*job.func_args)
                 except Exception as err:
