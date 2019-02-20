@@ -6,8 +6,16 @@ from .exceptions import SchedulerAlreadyRunning
 import logging
 from typing import Callable
 
+
+class LogHandler(object):
+    @classmethod
+    def handle(cls, record):
+        print(record, flush=True)
+
+
 logger = logging.getLogger('py_scheduler')
 logger.setLevel(logging.INFO)
+logger.addHandler(LogHandler)
 
 
 class StateStatus(Enum):
@@ -18,13 +26,14 @@ class StateStatus(Enum):
 
 class SchedulerJob(object):
     def __init__(self, func: Callable, func_args: tuple = (), interval: int = 0, name: str = '',
-                 error_capture: Callable = None, start_immediately: bool = True):
+                 error_capture: Callable = None, start_immediately: bool = True, die_on_error: bool = False):
         """
         :param func: Job function
         :param interval: Time interval in seconds
         :param name: Name of Job
         :param error_capture: Function to capture Exception, for example: `sentry`
-        :param start_immediately: if True - first start is immediately
+        :param start_immediately: if its True - first start is immediately
+        :param die_on_error: When the job will get error - it would be finished
         """
 
         self.func: Callable = func
@@ -33,6 +42,7 @@ class SchedulerJob(object):
         self.name: str = str(name)
         self.error_capture: Callable = error_capture if error_capture else lambda _: True
         self.start_immediately: bool = start_immediately
+        self.die_on_error: bool = die_on_error
 
 
 class Scheduler(object):
