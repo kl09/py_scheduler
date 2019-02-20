@@ -6,11 +6,9 @@ from .exceptions import SchedulerAlreadyRunning
 import logging
 from typing import Callable
 
-logger_level = logging.INFO
-
 
 class LogHandler(object):
-    level = logger_level
+    level = logging.NOTSET
 
     @classmethod
     def handle(cls, record):
@@ -18,7 +16,7 @@ class LogHandler(object):
 
 
 logger = logging.getLogger('py_scheduler')
-logger.setLevel(logger_level)
+logger.setLevel(logging.INFO)
 logger.addHandler(LogHandler)
 
 
