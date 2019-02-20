@@ -88,13 +88,13 @@ class Scheduler(object):
         """
         job = args[0]
 
-        logger.info('start job loop - %s' % str(job))
+        logger.debug('start job loop - %s' % str(job))
         while self.state != StateStatus.STOPPED:
             if not job.start_immediately:
                 self._event.wait(job.interval)
 
             if self.state == StateStatus.RUNNING:
-                logger.info('run job - %s' % str(job))
+                logger.debug('run job - %s' % str(job))
                 try:
                     job.func(*job.func_args)
                 except Exception as err:
